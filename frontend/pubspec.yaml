@@ -1,0 +1,44 @@
+name: frontend
+description: "Smart Reporting System Flutter App"
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ">=3.0.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+
+  # Networking
+  dio: ^5.7.0
+
+  # Camera
+  image_picker: ^1.1.2
+
+  # GPS location
+  geolocator: ^14.0.2
+
+  # Maps
+  flutter_map: ^8.3.0
+  latlong2: ^0.9.0
+
+  # Auth & Local Storage
+  flutter_secure_storage: ^10.3.1
+  shared_preferences: ^2.2.3
+  connectivity_plus: ^7.1.1
+  
+  # --- ADDED FOR FIREBASE ---
+  firebase_core: ^3.0.0
+  cloud_firestore: ^5.0.0
+
+  # Note: You can remove 'sqflite' and 'path' if you no longer need them.
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
