@@ -1,0 +1,16 @@
+# Python/Django
+__pycache__/
+*.pyc
+db.sqlite3
+.env
+media/
+
+# Flutter/Frontend
+.dart_tool/
+.pub-cache/
+.packages
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+.generated/
+*.lock

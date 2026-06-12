@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-// Import your service
-import 'services/api_service.dart';
+// Import Firebase core
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart'; // Ensure you have generated this via 'flutterfire configure'
 
 // Import screens
 import 'screens/splash_screen.dart';
@@ -11,11 +12,14 @@ import 'screens/admin_map_screen.dart';
 import 'screens/change_password_screen.dart';
 import 'screens/map_verification_screen.dart';
 
-void main() {
-  // CRITICAL: Initialize API Service to register interceptors before the app starts.
-  // This ensures your JWT tokens are automatically attached to every request.
+void main() async {
+  // CRITICAL: Ensure Flutter bindings are initialized before Firebase
   WidgetsFlutterBinding.ensureInitialized();
-  ApiService.init(); 
+  
+  // Initialize Firebase using the generated options for your platform
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
   
   runApp(const MyApp());
 }
