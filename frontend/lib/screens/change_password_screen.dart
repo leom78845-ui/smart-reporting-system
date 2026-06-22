@@ -1,4 +1,8 @@
+// lib/screens/change_password_screen.dart
+
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../managers/auth_manager.dart';
 import '../services/api_service.dart';
 
 class ChangePasswordScreen extends StatefulWidget {
@@ -10,7 +14,6 @@ class ChangePasswordScreen extends StatefulWidget {
 
 class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _oldPasswordController = TextEditingController();
   final _newPasswordController = TextEditingController();
   bool _isLoading = false;
 
@@ -18,33 +21,38 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
-    bool success = await ApiService.changePassword(
-      _oldPasswordController.text,
-      _newPasswordController.text
+
+    final success = await ApiService.changePassword(
+      _newPasswordController.text.trim(),
     );
+
     setState(() => _isLoading = false);
 
     if (!mounted) return;
 
     if (success) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Password customized successfully! Welcome to your dashboard.')),
+        const SnackBar(content: Text('Password updated successfully!')),
       );
-      // Route student into main operations screen
       Navigator.pushReplacementNamed(context, '/upload');
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Failed to update password. Verify your parameters.')),
+        const SnackBar(content: Text('Failed to update password.')),
       );
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final auth = Provider.of<AuthManager>(context);
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Account Security Configuration'), automaticallyImplyLeading: false),
+      appBar: AppBar(
+        title: const Text('Set New Password'),
+        automaticallyImplyLeading: false,
+      ),
       body: Padding(
-        padding: const EdgeInsets.all(20.0),
+        padding: const EdgeInsets.all(20),
         child: Form(
           key: _formKey,
           child: Column(
@@ -52,31 +60,37 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               const Text(
-                'Requirement #1: Set your custom password below before initializing application utilities.',
-                style: TextStyle(fontWeight: FontWeight.w600, color: Colors.grey),
+                'Before continuing, please set a new password.',
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  color: Colors.grey,
+                ),
               ),
               const SizedBox(height: 20),
-              TextFormField(
-                controller: _oldPasswordController,
-                obscureText: true,
-                decoration: const InputDecoration(labelText: 'Default Generated Password', border: OutlineInputBorder()),
-                validator: (v) => v!.isEmpty ? 'Required field' : null,
-              ),
-              const SizedBox(height: 16),
+
               TextFormField(
                 controller: _newPasswordController,
                 obscureText: true,
-                decoration: const InputDecoration(labelText: 'Personal Secure Password', border: OutlineInputBorder()),
-                validator: (v) => v!.length < 6 ? 'Password must be 6+ characters' : null,
+                decoration: const InputDecoration(
+                  labelText: 'New Password',
+                  border: OutlineInputBorder(),
+                ),
+                validator: (v) =>
+                    v!.length < 6 ? 'Password must be 6+ characters' : null,
               ),
               const SizedBox(height: 24),
-              _isLoading 
-                ? const Center(child: CircularProgressIndicator())
-                : ElevatedButton(
-                    onPressed: _updatePassword,
-                    style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 14), backgroundColor: Colors.green, foregroundColor: Colors.white),
-                    child: const Text('Apply Changes'),
-                  ),
+
+              _isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : ElevatedButton(
+                      onPressed: _updatePassword,
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        backgroundColor: Colors.green,
+                        foregroundColor: Colors.white,
+                      ),
+                      child: const Text('Apply Changes'),
+                    ),
             ],
           ),
         ),

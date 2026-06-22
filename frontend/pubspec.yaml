@@ -1,39 +1,68 @@
-name: frontend
-description: "Smart Reporting System Flutter App"
+name: smart_reporting_system
+description: A Flutter + Django Smart Reporting System for students and admins.
 publish_to: 'none'
+
 version: 1.0.0+1
 
 environment:
-  sdk: ">=3.0.0 <4.0.0"
+  sdk: ">=3.3.0 <4.0.0"
 
 dependencies:
   flutter:
     sdk: flutter
-  cupertino_icons: ^1.0.8
 
-  # Camera
-  image_picker: ^1.1.2
+  # State management
+  provider: ^6.1.2
 
-  # GPS location
-  geolocator: ^14.0.2
+  # HTTP requests
+  http: ^1.2.1
+
+  # Local storage
+  shared_preferences: ^2.2.2
 
   # Maps
-  flutter_map: ^8.3.0
+  flutter_map: ^6.1.0
   latlong2: ^0.9.0
 
-  # Storage & Utilities
-  shared_preferences: ^2.2.3
+  # Location services
+  geolocator: ^14.0.3
+
+  # Media capture
+  image_picker: ^1.1.0
+
+  # Offline storage
+  sqflite: ^2.3.0
+  path: ^1.9.0
+
+  # Connectivity
   connectivity_plus: ^7.1.1
-  
-  # --- FIREBASE DEPENDENCIES ---
-  firebase_core: ^3.0.0
-  cloud_firestore: ^5.0.0
-  firebase_auth: ^5.0.0
+
+  # UI
+  cupertino_icons: ^1.0.8
+
+  # Safe upgrades
+  xml: ^7.0.1
+  package_config: ^2.2.0
+  package_info_plus: ^10.1.0
+  permission_handler: ^12.0.3
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.13.1
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/images/hu_logo.png"
+  windows:
+    generate: true
+    image_path: "assets/images/hu_logo.png"
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/images/hu_gate.png
+    - assets/images/hu_app_icon.png
+    - assets/images/hu_logo.png

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "853673262179",
+    "project_id": "smart-reporting-system-163db",
+    "storage_bucket": "smart-reporting-system-163db.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:853673262179:android:680bd96e1769a7972e4c56",
+        "android_client_info": {
+          "package_name": "com.example.frontend"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD-dW36LAmTTUSxs7EMb07J6rjjmH_x1D8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

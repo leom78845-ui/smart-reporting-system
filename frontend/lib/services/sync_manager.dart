@@ -1,26 +1,78 @@
+// lib/services/sync_manager.dart
+
+import 'dart:async';
+import 'dart:io';
 import 'package:connectivity_plus/connectivity_plus.dart';
+
 import 'offline_queue.dart';
 import 'api_service.dart';
+import '../utils/constants.dart';
 
 class SyncManager {
+  static Timer? _timer;
+
+  // ---------------------------------------------------------------------------
+  // INITIALIZE SYNC MANAGER
+  // ---------------------------------------------------------------------------
   static void initialize() {
-    Connectivity().onConnectivityChanged.listen((List<ConnectivityResult> results) async {
-      if (!results.contains(ConnectivityResult.none)) {
-        final drafts = await OfflineQueue.getQueuedReports();
-        for (var report in drafts) {
-          bool success = await ApiService.submitReport(
-            title: report['title'],
-            description: report['description'],
-            latitude: report['latitude'],
-            longitude: report['longitude'],
-            filePath: report['file_path'],
-            mediaType: report['media_type'],
-          );
-          if (success) {
-            await OfflineQueue.deleteReport(report['id']);
-          }
+    // Cancel any existing timer
+    _timer?.cancel();
+
+    // Run sync every X seconds
+    _timer = Timer.periodic(
+      Duration(seconds: AppConstants.syncIntervalSeconds),
+      (_) => _attemptSync(),
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // ATTEMPT SYNC
+  // ---------------------------------------------------------------------------
+  static Future<void> _attemptSync() async {
+    final connectivity = await Connectivity().checkConnectivity();
+    if (connectivity == ConnectivityResult.none) {
+      return; // no internet
+    }
+
+    final drafts = await OfflineQueue.getQueuedReports();
+    if (drafts.isEmpty) return;
+
+    for (final draft in drafts) {
+      try {
+        final filePath = draft['file_path'] as String?;
+        final mediaType = draft['media_type'] ?? "image";
+
+        if (filePath == null) continue;
+
+        final file = File(filePath);
+        final mediaUrl = await ApiService.uploadMedia(file);
+
+        if (mediaUrl == null) continue;
+
+        final success = await ApiService.submitReport(
+          title: draft['title'] ?? "Untitled",
+          description: draft['description'] ?? "",
+          latitude: (draft['latitude'] as num).toDouble(),
+          longitude: (draft['longitude'] as num).toDouble(),
+          mediaUrl: mediaUrl,
+          mediaType: mediaType,
+        );
+
+        if (success) {
+          await OfflineQueue.deleteReport(draft['id'] as int);
         }
+      } catch (_) {
+        // Skip failed draft, will retry next cycle
+        continue;
       }
-    });
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // STOP SYNC MANAGER
+  // ---------------------------------------------------------------------------
+  static void stop() {
+    _timer?.cancel();
+    _timer = null;
   }
 }

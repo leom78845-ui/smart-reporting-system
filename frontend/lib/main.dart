@@ -1,48 +1,52 @@
-import 'package:flutter/material.dart';
-// Import Firebase core
-import 'package:firebase_core/firebase_core.dart';
-import 'firebase_options.dart'; // Ensure you have generated this via 'flutterfire configure'
+// lib/main.dart
 
-// Import screens
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
+import 'managers/auth_manager.dart';
+import 'services/sync_manager.dart';
 import 'screens/splash_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/upload_screen.dart';
-import 'screens/my_reports_screen.dart';
 import 'screens/admin_map_screen.dart';
 import 'screens/change_password_screen.dart';
-import 'screens/map_verification_screen.dart';
+import 'screens/create_students_screen.dart';
+import 'screens/my_reports_screen.dart';
 
 void main() async {
-  // CRITICAL: Ensure Flutter bindings are initialized before Firebase
   WidgetsFlutterBinding.ensureInitialized();
-  
-  // Initialize Firebase using the generated options for your platform
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
-  
-  runApp(const MyApp());
+
+  // Initialize offline sync manager (handles background report syncing)
+  SyncManager.initialize();
+
+  runApp(const SmartReportingApp());
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class SmartReportingApp extends StatelessWidget {
+  const SmartReportingApp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Smart Reporting System',
-      debugShowCheckedModeBanner: false,
-      initialRoute: '/',
-      routes: {
-        '/': (context) => const SplashScreen(),
-        '/login': (context) => const LoginScreen(),
-        '/upload': (context) => const UploadScreen(),
-        '/my-reports': (context) => const MyReportsScreen(),
-        '/admin-map': (context) => const AdminMapScreen(),
-        '/change-password': (context) => const ChangePasswordScreen(),
-        // Default coordinates for route initialization
-        '/map-verification': (context) => const MapVerificationScreen(lat: 0.0, lng: 0.0),
-      },
+    return ChangeNotifierProvider(
+      create: (_) => AuthManager(),
+      child: MaterialApp(
+        debugShowCheckedModeBanner: false,
+        title: "Smart Reporting System",
+        theme: ThemeData(
+          primarySwatch: Colors.blue,
+          useMaterial3: true,
+        ),
+        initialRoute: '/',
+        routes: {
+          '/': (_) => const SplashScreen(),
+          '/login': (_) => const LoginScreen(),
+          '/upload': (_) => const UploadScreen(),
+          '/adminMap': (_) => const AdminMapScreen(),
+          '/myReports': (_) => const MyReportsScreen(),
+          '/changePassword': (_) => const ChangePasswordScreen(),
+          '/createStudents': (_) => const CreateStudentsScreen(),
+        },
+      ),
     );
   }
 }

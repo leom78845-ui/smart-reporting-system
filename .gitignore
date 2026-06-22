@@ -1,7 +1,7 @@
 # Python/Django
 __pycache__/
 *.pyc
-db.sqlite3
+# db.sqlite3  # Included so PythonAnywhere gets existing data
 .env
 media/
 

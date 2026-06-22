@@ -1,5 +1,12 @@
+// lib/screens/splash_screen.dart
+
 import 'package:flutter/material.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:provider/provider.dart';
+
+import '../managers/auth_manager.dart';
+import 'login_screen.dart';
+import 'upload_screen.dart';
+import 'admin_map_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -12,50 +19,109 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    _checkAuth();
+    _initialize();
   }
 
-  Future<void> _checkAuth() async {
-    // Artificial delay to ensure branding is visible for a moment
-    await Future.delayed(const Duration(seconds: 2));
+  Future<void> _initialize() async {
+    final auth = Provider.of<AuthManager>(context, listen: false);
 
-    final storage = const FlutterSecureStorage();
-    String? token = await storage.read(key: 'jwt_token');
-    String? role = await storage.read(key: 'role');
+    // Load saved user (if any)
+    final loaded = await auth.loadUser();
+
+    // Small delay for splash animation
+    await Future.delayed(const Duration(seconds: 1));
 
     if (!mounted) return;
 
-    if (token != null) {
-      // Navigate based on role
-      if (role == 'admin') {
-        Navigator.pushReplacementNamed(context, '/admin-map');
+    if (loaded) {
+      // User exists → route by role
+      if (auth.isAdmin) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const AdminMapScreen()),
+        );
       } else {
-        Navigator.pushReplacementNamed(context, '/upload');
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const UploadScreen()),
+        );
       }
     } else {
-      Navigator.pushReplacementNamed(context, '/login');
+      // No saved user → go to login
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const LoginScreen()),
+      );
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            // Your App Branding
-            const Icon(Icons.shield_rounded, size: 100, color: Colors.blue),
-            const SizedBox(height: 20),
-            const Text(
-              "Smart Reporting System",
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+      body: Stack(
+        children: [
+          // 1. Background image
+          Container(
+            decoration: const BoxDecoration(
+              image: DecorationImage(
+                image: AssetImage('assets/images/hu_gate.png'),
+                fit: BoxFit.cover,
+              ),
             ),
-            const SizedBox(height: 40),
-            const CircularProgressIndicator(color: Colors.blue),
-          ],
-        ),
+          ),
+          // 2. Dark gradient overlay
+          Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Colors.black.withOpacity(0.4),
+                  Colors.black.withOpacity(0.8),
+                ],
+              ),
+            ),
+          ),
+          // 3. Branding text and indicator
+          Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Image.asset(
+                  'assets/images/hu_logo.png',
+                  height: 120,
+                  width: 120,
+                  errorBuilder: (context, error, stackTrace) => const Icon(
+                    Icons.shield_rounded,
+                    size: 100,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                const Text(
+                  "Smart Reporting System",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 1.2,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  "Hazara University",
+                  style: TextStyle(
+                    color: Colors.white70,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w400,
+                  ),
+                ),
+                const SizedBox(height: 60),
+                const CircularProgressIndicator(color: Colors.white),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

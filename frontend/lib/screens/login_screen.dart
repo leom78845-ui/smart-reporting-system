@@ -1,6 +1,12 @@
+// lib/screens/login_screen.dart
+
+import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import '../services/api_service.dart';
+import 'package:provider/provider.dart';
+
+import '../managers/auth_manager.dart';
+import 'upload_screen.dart';
+import 'admin_map_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -10,100 +16,236 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final _formKey = GlobalKey<FormState>();
-  final _usernameController = TextEditingController();
-  final _passwordController = TextEditingController();
-  final _storage = const FlutterSecureStorage();
+  final TextEditingController _rollController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+
   bool _isLoading = false;
 
-  Future<void> _handleLogin() async {
-    if (!_formKey.currentState!.validate()) return;
+  @override
+  void dispose() {
+    _rollController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _login() async {
+    final auth = Provider.of<AuthManager>(context, listen: false);
+
+    final roll = _rollController.text.trim();
+    final password = _passwordController.text.trim();
+
+    if (roll.isEmpty || password.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Please enter roll number and password")),
+      );
+      return;
+    }
 
     setState(() => _isLoading = true);
-    final username = _usernameController.text.trim();
-    final password = _passwordController.text;
 
-    // Call the updated ApiService.login which returns a Map
-    final authData = await ApiService.login(username, password);
+    // Roll number goes straight to Django, no email conversion needed
+    final success = await auth.login(roll, password);
 
     setState(() => _isLoading = false);
 
-    // Check if authData is not null (success)
-    // Django sends 'access', 'role', and 'is_first_login'
-    if (authData != null && authData['access'] != null) {
-      
-      // Save data securely using the keys the backend actually sends
-      await _storage.write(key: 'jwt_token', value: authData['access']);
-      await _storage.write(key: 'role', value: authData['role']);
-
-      if (!mounted) return;
-
-      // Navigate based on Role
-      if (authData['role'] == 'student') {
-        // Handle first login requirement
-        if (authData['is_first_login'] == true) {
-          Navigator.pushReplacementNamed(context, '/change-password');
-        } else {
-          Navigator.pushReplacementNamed(context, '/upload');
-        }
-      } else {
-        // Admin role
-        Navigator.pushReplacementNamed(context, '/admin-map');
-      }
-    } else {
-      _showErrorDialog("Login Failed", "Invalid credentials or account restricted.");
+    if (!success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Login failed. Check credentials.")),
+      );
+      return;
     }
-  }
 
-  void _showErrorDialog(String title, String message) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(title, style: const TextStyle(color: Colors.red)),
-        content: Text(message),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("OK"))
-        ],
-      ),
-    );
+    // Navigate based on role
+    if (auth.isAdmin) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const AdminMapScreen()),
+      );
+    } else {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const UploadScreen()),
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final auth = Provider.of<AuthManager>(context);
+
     return Scaffold(
-      body: Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24.0),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              children: [
-                const Icon(Icons.security, size: 80, color: Colors.blue),
-                const SizedBox(height: 30),
-                TextFormField(
-                  controller: _usernameController,
-                  decoration: const InputDecoration(labelText: 'Roll Number', border: OutlineInputBorder()),
-                  validator: (v) => v!.isEmpty ? 'Required' : null,
-                ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  controller: _passwordController,
-                  obscureText: true,
-                  decoration: const InputDecoration(labelText: 'Password', border: OutlineInputBorder()),
-                  validator: (v) => v!.isEmpty ? 'Required' : null,
-                ),
-                const SizedBox(height: 24),
-                _isLoading 
-                  ? const CircularProgressIndicator()
-                  : ElevatedButton(
-                      onPressed: _handleLogin,
-                      style: ElevatedButton.styleFrom(minimumSize: const Size(double.infinity, 50)),
-                      child: const Text('Login'),
-                    ),
-              ],
+      body: Stack(
+        children: [
+          // 1. Background image
+          Container(
+            decoration: const BoxDecoration(
+              image: DecorationImage(
+                image: AssetImage('assets/images/hu_gate.png'),
+                fit: BoxFit.cover,
+                alignment: Alignment(0, 0.6), // Shifts focus to lower part of image
+              ),
             ),
           ),
-        ),
+          // 2. Dark gradient overlay
+          Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Colors.black.withOpacity(0.4),
+                  Colors.black.withOpacity(0.75),
+                ],
+              ),
+            ),
+          ),
+          // 3. Login form (glassmorphic card)
+          Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(28),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // App Icon
+                            Image.asset(
+                              'assets/images/hu_logo.png',
+                              height: 80,
+                              width: 80,
+                              errorBuilder: (context, error, stackTrace) => const Icon(
+                                Icons.shield_rounded,
+                                size: 80,
+                                color: Colors.white,
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            const Text(
+                              "Hazara University",
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 22,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 1.2,
+                              ),
+                            ),
+                            const Text(
+                              "Smart Reporting System",
+                              style: TextStyle(
+                                color: Colors.white70,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w400,
+                              ),
+                            ),
+                            const SizedBox(height: 32),
+                            // Roll Number Input
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(12),
+                              child: BackdropFilter(
+                                filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(color: Colors.white.withOpacity(0.2)),
+                                  ),
+                                  child: TextField(
+                                    controller: _rollController,
+                                    style: const TextStyle(color: Colors.white),
+                                    decoration: const InputDecoration(
+                                      prefixIcon: Icon(Icons.person_outline, color: Colors.white70),
+                                      labelText: "Roll Number",
+                                      labelStyle: TextStyle(color: Colors.white70),
+                                      border: InputBorder.none,
+                                      contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 18),
+                            // Password Input
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(12),
+                              child: BackdropFilter(
+                                filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(color: Colors.white.withOpacity(0.2)),
+                                  ),
+                                  child: TextField(
+                                    controller: _passwordController,
+                                    obscureText: true,
+                                    style: const TextStyle(color: Colors.white),
+                                    decoration: const InputDecoration(
+                                      prefixIcon: Icon(Icons.lock_outline, color: Colors.white70),
+                                      labelText: "Password",
+                                      labelStyle: TextStyle(color: Colors.white70),
+                                      border: InputBorder.none,
+                                      contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 32),
+                            // Login Button
+                            _isLoading
+                                ? const CircularProgressIndicator(color: Colors.white)
+                                : Container(
+                                    width: double.infinity,
+                                    height: 52,
+                                    decoration: BoxDecoration(
+                                      gradient: const LinearGradient(
+                                        colors: [Colors.blue, Colors.blueAccent],
+                                      ),
+                                      borderRadius: BorderRadius.circular(12),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.blueAccent.withOpacity(0.3),
+                                          blurRadius: 10,
+                                          offset: const Offset(0, 4),
+                                        ),
+                                      ],
+                                    ),
+                                    child: ElevatedButton(
+                                      onPressed: _login,
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: Colors.transparent,
+                                        shadowColor: Colors.transparent,
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(12),
+                                        ),
+                                      ),
+                                      child: const Text(
+                                        "Login",
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                          ],
+                        ),
+                      ),
+                  const SizedBox(height: 24),
+                  if (auth.role != null)
+                    Text(
+                      "Role: ${auth.role}",
+                      style: const TextStyle(color: Colors.white54, fontSize: 13),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

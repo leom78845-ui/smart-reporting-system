@@ -1,8 +1,16 @@
+// lib/screens/upload_screen.dart
+
 import 'dart:io';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:provider/provider.dart';
+import 'package:latlong2/latlong.dart';
+
 import '../services/api_service.dart';
+import '../services/offline_queue.dart';
+import '../managers/auth_manager.dart';
 import 'map_verification_screen.dart';
 
 class UploadScreen extends StatefulWidget {
@@ -14,159 +22,584 @@ class UploadScreen extends StatefulWidget {
 
 class _UploadScreenState extends State<UploadScreen> {
   final TextEditingController _titleController = TextEditingController();
-  final TextEditingController _descriptionController = TextEditingController();
-  String? _selectedFilePath;
-  double _lat = 0.0;
-  double _lng = 0.0;
-  bool _isSubmitting = false;
+  final TextEditingController _descController = TextEditingController();
+
+  File? _selectedFile;
+  String? _mediaType;
+  bool _isLoading = false;
+
+  int _pendingCount = 0;
+  int _reviewingCount = 0;
+  int _resolvedCount = 0;
+  bool _statsLoading = true;
 
   @override
-  void dispose() {
-    _titleController.dispose();
-    _descriptionController.dispose();
-    super.dispose();
+  void initState() {
+    super.initState();
+    _loadStats();
   }
 
-  // UPDATED: Dialog to choose between real-time Photo or Video
-  Future<void> _captureMedia() async {
-    final ImagePicker picker = ImagePicker();
-    
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text("Capture Media"),
-        content: const Text("Capture real-time data for your report:"),
-        actions: [
-          TextButton.icon(
-            onPressed: () async {
-              Navigator.pop(context);
-              final XFile? photo = await picker.pickImage(source: ImageSource.camera);
-              if (photo != null) setState(() => _selectedFilePath = photo.path);
-            },
-            icon: const Icon(Icons.camera_alt),
-            label: const Text("Photo"),
-          ),
-          TextButton.icon(
-            onPressed: () async {
-              Navigator.pop(context);
-              final XFile? video = await picker.pickVideo(source: ImageSource.camera, maxDuration: const Duration(seconds: 30));
-              if (video != null) setState(() => _selectedFilePath = video.path);
-            },
-            icon: const Icon(Icons.videocam),
-            label: const Text("Video"),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Future<void> _getCurrentLocation() async {
-    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!serviceEnabled) return;
-
-    LocationPermission permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied) {
-      permission = await Geolocator.requestPermission();
+  Future<void> _loadStats() async {
+    setState(() => _statsLoading = true);
+    try {
+      final stats = await ApiService.getMyReportStats();
+      if (mounted) {
+        setState(() {
+          _pendingCount = stats['pending'] ?? 0;
+          _reviewingCount = stats['reviewing'] ?? 0;
+          _resolvedCount = stats['resolved'] ?? 0;
+          _statsLoading = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _statsLoading = false);
     }
-    
-    if (permission == LocationPermission.whileInUse || permission == LocationPermission.always) {
-      Position position = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
+  }
+
+  Future<void> _pickMedia(String type) async {
+    final picker = ImagePicker();
+    XFile? picked;
+
+    if (type == "image") {
+      picked = await picker.pickImage(source: ImageSource.camera);
+    } else {
+      picked = await picker.pickVideo(source: ImageSource.camera);
+    }
+
+    if (picked != null) {
       setState(() {
-        _lat = position.latitude;
-        _lng = position.longitude;
+        _selectedFile = File(picked!.path);
+        _mediaType = type;
       });
     }
   }
 
-  Future<void> _openMapVerification() async {
-    if (_selectedFilePath == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Please capture media first!")));
+  Future<void> _submitReport() async {
+    final title = _titleController.text.trim();
+    final description = _descController.text.trim();
+
+    if (title.isEmpty || description.isEmpty || _selectedFile == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Please fill all fields and attach media")),
+      );
       return;
     }
-    
-    await _getCurrentLocation();
-    if (!mounted) return;
 
-    final bool? confirmed = await Navigator.push<bool>(
-      context,
-      MaterialPageRoute(builder: (context) => MapVerificationScreen(lat: _lat, lng: _lng)),
-    );
+    setState(() => _isLoading = true);
 
-    if (confirmed == true) await _submit();
+    try {
+      // Get current location from geolocator
+      final pos = await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.high);
+
+      // Open Map Verification Screen to let student double check the pin location
+      setState(() => _isLoading = false);
+      if (!mounted) return;
+      final LatLng? verifiedLoc = await Navigator.push<LatLng>(
+        context,
+        MaterialPageRoute(
+          builder: (_) => MapVerificationScreen(
+            lat: pos.latitude,
+            lng: pos.longitude,
+          ),
+        ),
+      );
+
+      if (verifiedLoc == null) {
+        // User cancelled location verification
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Location verification is required.")),
+        );
+        return;
+      }
+
+      setState(() => _isLoading = true);
+
+      // Try uploading media locally
+      final mediaUrl = await ApiService.uploadMedia(_selectedFile!);
+
+      bool success = false;
+      if (mediaUrl != null) {
+        // Submit online
+        success = await ApiService.submitReport(
+          title: title,
+          description: description,
+          latitude: verifiedLoc.latitude,
+          longitude: verifiedLoc.longitude,
+          mediaUrl: mediaUrl,
+          mediaType: _mediaType ?? "image",
+        );
+      }
+
+      if (success) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Report submitted successfully")),
+        );
+        _clearForm();
+        _loadStats();
+      } else {
+        // Save offline draft using verified coordinates
+        await OfflineQueue.queueReport({
+          "title": title,
+          "description": description,
+          "latitude": verifiedLoc.latitude,
+          "longitude": verifiedLoc.longitude,
+          "file_path": _selectedFile!.path,
+          "media_type": _mediaType ?? "image",
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("No internet. Report saved offline.")),
+        );
+        _clearForm();
+        _loadStats();
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error: $e")),
+      );
+    } finally {
+      setState(() => _isLoading = false);
+    }
   }
 
-  Future<void> _submit() async {
-    if (_selectedFilePath == null) return;
-    setState(() => _isSubmitting = true);
-
-    bool success = await ApiService.submitReport(
-      title: _titleController.text,
-      description: _descriptionController.text,
-      latitude: _lat,
-      longitude: _lng,
-      filePath: _selectedFilePath!,
-      mediaType: _selectedFilePath!.endsWith('.mp4') ? 'video' : 'image',
-    );
-
-    setState(() => _isSubmitting = false);
-
-    if (success && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Report Submitted!")));
-      _titleController.clear();
-      _descriptionController.clear();
-      setState(() => _selectedFilePath = null);
-    } else if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Submission Failed.")));
-    }
+  void _clearForm() {
+    _titleController.clear();
+    _descController.clear();
+    setState(() {
+      _selectedFile = null;
+      _mediaType = null;
+    });
   }
 
   @override
   Widget build(BuildContext context) {
+    final auth = Provider.of<AuthManager>(context);
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Upload Report"),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: () async {
-              await ApiService.logout();
-              if (!mounted) return;
-              Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
-            },
+        title: const Text(
+          "Hazara University Student",
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
+        backgroundColor: Colors.blue.shade900,
+        iconTheme: const IconThemeData(color: Colors.white),
+        elevation: 2,
+      ),
+      endDrawer: Drawer(
+        child: Container(
+          color: Colors.grey.shade900,
+          child: Column(
+            children: [
+              DrawerHeader(
+                decoration: BoxDecoration(
+                  color: Colors.blue.shade900,
+                ),
+                child: Row(
+                  children: [
+                    Image.asset(
+                      'assets/images/hu_logo.png',
+                      height: 60,
+                      width: 60,
+                      errorBuilder: (context, error, stackTrace) => const Icon(
+                        Icons.school,
+                        size: 50,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            auth.user?['name'] ?? "Student Dashboard",
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          Text(
+                            auth.user?['roll_number'] ?? "Student",
+                            style: const TextStyle(
+                              color: Colors.white70,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              ListTile(
+                leading: const Icon(Icons.history, color: Colors.blueAccent),
+                title: const Text(
+                  "My Reports",
+                  style: TextStyle(color: Colors.white, fontSize: 16),
+                ),
+                subtitle: const Text(
+                  "Track your reports & drafts",
+                  style: TextStyle(color: Colors.white54, fontSize: 12),
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.pushNamed(context, '/myReports').then((_) => _loadStats());
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.lock_outline, color: Colors.amberAccent),
+                title: const Text(
+                  "Change Password",
+                  style: TextStyle(color: Colors.white, fontSize: 16),
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.pushNamed(context, '/changePassword');
+                },
+              ),
+              const Spacer(),
+              const Divider(color: Colors.white12),
+              ListTile(
+                leading: const Icon(Icons.logout, color: Colors.redAccent),
+                title: const Text(
+                  "Logout",
+                  style: TextStyle(color: Colors.white, fontSize: 16),
+                ),
+                onTap: () async {
+                  Navigator.pop(context);
+                  await auth.logout();
+                  if (!mounted) return;
+                  Navigator.pushNamedAndRemoveUntil(context, '/login', (_) => false);
+                },
+              ),
+              const SizedBox(height: 20),
+            ],
+          ),
+        ),
+      ),
+      body: Stack(
+        children: [
+          // 1. Background Image
+          Container(
+            decoration: const BoxDecoration(
+              image: DecorationImage(
+                image: AssetImage('assets/images/hu_gate.png'),
+                fit: BoxFit.cover,
+              ),
+            ),
+          ),
+          // 2. Overlay
+          Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Colors.black.withOpacity(0.5),
+                  Colors.black.withOpacity(0.8),
+                ],
+              ),
+            ),
+          ),
+          // 3. Content
+          RefreshIndicator(
+            onRefresh: _loadStats,
+            color: Colors.blue,
+            child: SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    "Overview",
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  // Stats Cards
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildStatCard(
+                          title: "Pending",
+                          count: _pendingCount,
+                          color: Colors.orangeAccent,
+                          icon: Icons.hourglass_empty,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: _buildStatCard(
+                          title: "Reviewing",
+                          count: _reviewingCount,
+                          color: Colors.blueAccent,
+                          icon: Icons.rate_review,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: _buildStatCard(
+                          title: "Resolved",
+                          count: _resolvedCount,
+                          color: Colors.greenAccent,
+                          icon: Icons.check_circle_outline,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 28),
+                  const Text(
+                    "Submit A New Report",
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  // Glassmorphic Upload Card
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(20),
+                    child: BackdropFilter(
+                      filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                      child: Container(
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.08),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: Colors.white.withOpacity(0.15),
+                            width: 1.2,
+                          ),
+                        ),
+                        child: Column(
+                          children: [
+                            TextField(
+                              controller: _titleController,
+                              style: const TextStyle(color: Colors.white),
+                              decoration: InputDecoration(
+                                labelText: "Title",
+                                labelStyle: const TextStyle(color: Colors.white70),
+                                enabledBorder: OutlineInputBorder(
+                                  borderSide: BorderSide(color: Colors.white.withOpacity(0.3)),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderSide: const BorderSide(color: Colors.blueAccent, width: 2),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                filled: true,
+                                fillColor: Colors.white.withOpacity(0.04),
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            TextField(
+                              controller: _descController,
+                              maxLines: 3,
+                              style: const TextStyle(color: Colors.white),
+                              decoration: InputDecoration(
+                                labelText: "Description",
+                                labelStyle: const TextStyle(color: Colors.white70),
+                                enabledBorder: OutlineInputBorder(
+                                  borderSide: BorderSide(color: Colors.white.withOpacity(0.3)),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderSide: const BorderSide(color: Colors.blueAccent, width: 2),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                filled: true,
+                                fillColor: Colors.white.withOpacity(0.04),
+                              ),
+                            ),
+                            const SizedBox(height: 20),
+                            _selectedFile == null
+                                ? Container(
+                                    height: 160,
+                                    width: double.infinity,
+                                    decoration: BoxDecoration(
+                                      color: Colors.white.withOpacity(0.04),
+                                      border: Border.all(color: Colors.white.withOpacity(0.2)),
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: const Center(
+                                      child: Column(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          Icon(Icons.cloud_upload_outlined, size: 40, color: Colors.white60),
+                                          SizedBox(height: 8),
+                                          Text(
+                                            "No media captured yet",
+                                            style: TextStyle(color: Colors.white60, fontSize: 13),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  )
+                                : Container(
+                                    height: 160,
+                                    width: double.infinity,
+                                    decoration: BoxDecoration(
+                                      border: Border.all(color: Colors.white.withOpacity(0.2)),
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: ClipRRect(
+                                      borderRadius: BorderRadius.circular(12),
+                                      child: _mediaType == "image"
+                                          ? Image.file(_selectedFile!, fit: BoxFit.cover)
+                                          : const Center(
+                                              child: Column(
+                                                mainAxisAlignment: MainAxisAlignment.center,
+                                                children: [
+                                                  Icon(Icons.video_library, size: 45, color: Colors.blueAccent),
+                                                  SizedBox(height: 8),
+                                                  Text(
+                                                    "Video Captured",
+                                                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                    ),
+                                  ),
+                            const SizedBox(height: 16),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: ElevatedButton.icon(
+                                    onPressed: () => _pickMedia("image"),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.white.withOpacity(0.12),
+                                      foregroundColor: Colors.white,
+                                      elevation: 0,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                        side: BorderSide(color: Colors.white.withOpacity(0.15)),
+                                      ),
+                                    ),
+                                    icon: const Icon(Icons.camera_alt, size: 18),
+                                    label: const Text("Photo", style: TextStyle(fontSize: 13)),
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: ElevatedButton.icon(
+                                    onPressed: () => _pickMedia("video"),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.white.withOpacity(0.12),
+                                      foregroundColor: Colors.white,
+                                      elevation: 0,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                        side: BorderSide(color: Colors.white.withOpacity(0.15)),
+                                      ),
+                                    ),
+                                    icon: const Icon(Icons.videocam, size: 18),
+                                    label: const Text("Video", style: TextStyle(fontSize: 13)),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 24),
+                            _isLoading
+                                ? const CircularProgressIndicator(color: Colors.white)
+                                : Container(
+                                    width: double.infinity,
+                                    height: 50,
+                                    decoration: BoxDecoration(
+                                      gradient: const LinearGradient(
+                                        colors: [Colors.blue, Colors.blueAccent],
+                                      ),
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: ElevatedButton(
+                                      onPressed: _submitReport,
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: Colors.transparent,
+                                        shadowColor: Colors.transparent,
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(12),
+                                        ),
+                                      ),
+                                      child: const Text(
+                                        "Verify Location & Submit",
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            TextField(controller: _titleController, decoration: const InputDecoration(labelText: 'Title', border: OutlineInputBorder())),
-            const SizedBox(height: 16),
-            TextField(controller: _descriptionController, decoration: const InputDecoration(labelText: 'Description', border: OutlineInputBorder()), maxLines: 3),
-            const SizedBox(height: 20),
-            
-            if (_selectedFilePath != null)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 10),
-                child: Text(_selectedFilePath!.endsWith('.mp4') ? "Video Captured" : "Image Captured", style: const TextStyle(fontWeight: FontWeight.bold)),
-              ),
+    );
+  }
 
-            ElevatedButton.icon(
-              onPressed: _captureMedia, 
-              icon: const Icon(Icons.camera_enhance),
-              label: Text(_selectedFilePath == null ? "Capture Media" : "Retake Media")
-            ),
-            const SizedBox(height: 20),
-            
-            _isSubmitting
-              ? const CircularProgressIndicator()
-              : ElevatedButton(
-                  onPressed: _openMapVerification,
-                  style: ElevatedButton.styleFrom(minimumSize: const Size(double.infinity, 50)),
-                  child: const Text("Verify Location & Submit")
-                ),
-          ],
+  Widget _buildStatCard({
+    required String title,
+    required int count,
+    required Color color,
+    required IconData icon,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 10),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: Colors.white.withOpacity(0.12),
+          width: 1,
         ),
+      ),
+      child: Column(
+        children: [
+          Icon(icon, color: color, size: 28),
+          const SizedBox(height: 8),
+          _statsLoading
+              ? const SizedBox(
+                  height: 22,
+                  width: 22,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
+                )
+              : Text(
+                  count.toString(),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+          const SizedBox(height: 4),
+          Text(
+            title,
+            style: const TextStyle(
+              color: Colors.white54,
+              fontSize: 12,
+            ),
+          ),
+        ],
       ),
     );
   }
