@@ -262,6 +262,17 @@ class _UploadScreenState extends State<UploadScreen> {
                   Navigator.pushNamed(context, '/changePassword');
                 },
               ),
+              ListTile(
+                leading: const Icon(Icons.drafts_outlined, color: Colors.cyanAccent),
+                title: const Text(
+                  "Drafts",
+                  style: TextStyle(color: Colors.white, fontSize: 16),
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.pushNamed(context, '/drafts').then((_) => _loadStats());
+                },
+              ),
               const Spacer(),
               const Divider(color: Colors.white12),
               ListTile(

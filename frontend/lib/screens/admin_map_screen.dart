@@ -114,11 +114,7 @@ class _AdminMapScreenState extends State<AdminMapScreen> {
           if (r['latitude'] == null || r['longitude'] == null) return false;
           final lat = double.tryParse(r['latitude'].toString());
           final lng = double.tryParse(r['longitude'].toString());
-          if (lat == null || lng == null) return false;
-          return lat >= _swBound.latitude &&
-              lat <= _neBound.latitude &&
-              lng >= _swBound.longitude &&
-              lng <= _neBound.longitude;
+          return lat != null && lng != null;
         }).toList();
 
         // Build report markers

@@ -12,6 +12,7 @@ import 'screens/admin_map_screen.dart';
 import 'screens/change_password_screen.dart';
 import 'screens/create_students_screen.dart';
 import 'screens/my_reports_screen.dart';
+import 'screens/drafts_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -45,6 +46,7 @@ class SmartReportingApp extends StatelessWidget {
           '/myReports': (_) => const MyReportsScreen(),
           '/changePassword': (_) => const ChangePasswordScreen(),
           '/createStudents': (_) => const CreateStudentsScreen(),
+          '/drafts': (_) => const DraftsScreen(),
         },
       ),
     );
