@@ -57,6 +57,7 @@ class AuthManager extends ChangeNotifier {
     final role = prefs.getString("user_role");
     final roll = prefs.getString("roll_number");
     final access = prefs.getString("access_token");
+    final refresh = prefs.getString("refresh_token");
 
     if (role == null || roll == null || access == null) {
       return false;
@@ -68,9 +69,13 @@ class AuthManager extends ChangeNotifier {
       "roll_number": roll,
     };
 
+    // Restore tokens in ApiService
+    ApiService.setTokens(access, refresh);
+
     notifyListeners();
     return true;
   }
+
 
   // ---------------------------------------------------------------------------
   // LOGOUT

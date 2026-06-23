@@ -44,6 +44,15 @@ class ApiService {
     _refreshToken = null;
   }
 
+  static void setTokens(String? access, String? refresh) {
+    _accessToken = access;
+    _refreshToken = refresh;
+  }
+
+  static String? get refreshToken => _refreshToken;
+
+
+
   // ---------------------------------------------------------------------------
   // GENERIC AUTHORIZED GET
   // ---------------------------------------------------------------------------
