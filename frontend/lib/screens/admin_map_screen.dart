@@ -342,10 +342,7 @@ class _AdminMapScreenState extends State<AdminMapScreen> {
               initialCenter: CampusMapManager.universityCenter,
               initialZoom: CampusMapManager.defaultZoom,
               interactionOptions: const InteractionOptions(flags: InteractiveFlag.all),
-              cameraConstraint: CameraConstraint.contain(
-                bounds: LatLngBounds(_cameraSwBound, _cameraNeBound),
-              ),
-              minZoom: 14.0,
+              minZoom: 2.0,
               maxZoom: 18.0,
             ),
             children: [
