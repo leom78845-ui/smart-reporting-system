@@ -2,8 +2,7 @@
 
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart';
-import 'package:latlong2/latlong.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:provider/provider.dart';
 
 import '../services/api_service.dart';
@@ -20,7 +19,7 @@ class AdminMapScreen extends StatefulWidget {
 }
 
 class _AdminMapScreenState extends State<AdminMapScreen> {
-  final MapController _mapController = MapController();
+  GoogleMapController? _mapController;
 
   List<dynamic> _reports = [];
   bool _isLoading = true;
@@ -29,17 +28,10 @@ class _AdminMapScreenState extends State<AdminMapScreen> {
   bool _isSatellite = true;
 
 
-  // Hazara University boundary
-  static const LatLng _swBound = LatLng(34.4155, 73.2435);
-  static const LatLng _neBound = LatLng(34.4244, 73.2565);
 
-  // Wider bounds for camera constraint to avoid breaking zoom at minZoom
-  static const LatLng _cameraSwBound = LatLng(34.4000, 73.2300);
-  static const LatLng _cameraNeBound = LatLng(34.4300, 73.2700);
 
-  final List<Marker> _markers = [];
-  final List<Marker> _campusMarkers = [];
-  final List<Marker> _reportMarkers = [];
+  final Set<Marker> _campusMarkers = {};
+  final Set<Marker> _reportMarkers = {};
 
   @override
   void initState() {
@@ -54,56 +46,16 @@ class _AdminMapScreenState extends State<AdminMapScreen> {
     
     final markers = locs.map((loc) {
       return Marker(
-        point: LatLng(loc.latitude, loc.longitude),
-        width: 100,
-        height: 60,
-        child: GestureDetector(
-          onTap: () {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(loc.name)),
-            );
-          },
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(6),
-                decoration: const BoxDecoration(
-                  color: Colors.blueAccent,
-                  shape: BoxShape.circle,
-                  boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 2)],
-                ),
-                child: Icon(CampusMapManager.getIconForLocation(loc.name), color: Colors.white, size: 18),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.9),
-                  borderRadius: BorderRadius.circular(4),
-                  boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 2)],
-                ),
-                child: Text(
-                  loc.name,
-                  style: const TextStyle(
-                    color: Colors.black,
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                  ),
-                  textAlign: TextAlign.center,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ],
-          ),
-        ),
+        markerId: MarkerId(loc.name),
+        position: LatLng(loc.latitude, loc.longitude),
+        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure),
+        infoWindow: InfoWindow(title: loc.name),
       );
     }).toList();
     
     setState(() {
       _campusMarkers.clear();
       _campusMarkers.addAll(markers);
-      _updateAllMarkers();
     });
   }
 
@@ -127,14 +79,12 @@ class _AdminMapScreenState extends State<AdminMapScreen> {
           final loc = r['location']!;
           final lat = double.parse(loc['latitude'].toString());
           final lng = double.parse(loc['longitude'].toString());
+          final reportId = r['id'].toString();
           return Marker(
-            point: LatLng(lat, lng),
-            width: 40,
-            height: 40,
-            child: GestureDetector(
-              onTap: () => _showReportBottomSheet(r),
-              child: const Icon(Icons.location_on, color: Colors.red, size: 40),
-            ),
+            markerId: MarkerId('report_$reportId'),
+            position: LatLng(lat, lng),
+            icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
+            onTap: () => _showReportBottomSheet(r),
           );
         }).toList();
 
@@ -142,7 +92,6 @@ class _AdminMapScreenState extends State<AdminMapScreen> {
           _reports = filtered;
           _reportMarkers.clear();
           _reportMarkers.addAll(markers);
-          _updateAllMarkers();
         });
       }
     } catch (e) {
@@ -154,12 +103,6 @@ class _AdminMapScreenState extends State<AdminMapScreen> {
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
-  }
-
-  void _updateAllMarkers() {
-    _markers.clear();
-    _markers.addAll(_campusMarkers);
-    _markers.addAll(_reportMarkers);
   }
 
   void _showReportBottomSheet(Map<String, dynamic> r) {
@@ -512,26 +455,18 @@ class _AdminMapScreenState extends State<AdminMapScreen> {
       ),
       body: Stack(
         children: [
-          FlutterMap(
-            mapController: _mapController,
-            options: MapOptions(
-              initialCenter: CampusMapManager.universityCenter,
-              initialZoom: CampusMapManager.defaultZoom,
-              interactionOptions: const InteractionOptions(flags: InteractiveFlag.all),
-              minZoom: 2.0,
-              maxZoom: 18.0,
+          GoogleMap(
+            initialCameraPosition: CameraPosition(
+              target: CampusMapManager.universityCenter,
+              zoom: CampusMapManager.defaultZoom,
             ),
-            children: [
-              TileLayer(
-                urlTemplate: _isSatellite 
-                    ? 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
-                    : 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                userAgentPackageName: 'com.smartreporting.hu',
-              ),
-              MarkerLayer(
-                markers: _markers,
-              ),
-            ],
+            mapType: _isSatellite ? MapType.satellite : MapType.normal,
+            onMapCreated: (controller) => _mapController = controller,
+            minMaxZoomPreference: const MinMaxZoomPreference(2.0, 18.0),
+            markers: {
+              ..._campusMarkers,
+              ..._reportMarkers,
+            },
           ),
 
           _buildControls(),
@@ -651,13 +586,15 @@ class _AdminMapScreenState extends State<AdminMapScreen> {
                           ),
                           trailing: const Icon(Icons.chevron_right, color: Colors.white54),
                           onTap: () {
-                             final loc = report['location'];
-                             final lat = loc != null ? (double.tryParse(loc['latitude'].toString()) ?? 0.0) : 0.0;
-                             final lng = loc != null ? (double.tryParse(loc['longitude'].toString()) ?? 0.0) : 0.0;
-                             _mapController.move(LatLng(lat, lng), 17.0);
-                             setState(() => _showSheet = false);
-                             _showReportBottomSheet(report);
-                           },
+                              final loc = report['location'];
+                              final lat = loc != null ? (double.tryParse(loc['latitude'].toString()) ?? 0.0) : 0.0;
+                              final lng = loc != null ? (double.tryParse(loc['longitude'].toString()) ?? 0.0) : 0.0;
+                              _mapController?.animateCamera(
+                                CameraUpdate.newLatLngZoom(LatLng(lat, lng), 17.0),
+                              );
+                              setState(() => _showSheet = false);
+                              _showReportBottomSheet(report);
+                            },
                         );
                       },
                     ),

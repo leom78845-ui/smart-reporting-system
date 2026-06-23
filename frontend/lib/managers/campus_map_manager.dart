@@ -1,7 +1,8 @@
 // lib/managers/campus_map_manager.dart
 
 import 'package:flutter/material.dart';
-import 'package:latlong2/latlong.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
+
 import '../models/campus_location.dart';
 
 class CampusMapManager {

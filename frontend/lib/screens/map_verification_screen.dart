@@ -1,8 +1,7 @@
 // lib/screens/map_verification_screen.dart
 
 import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart';
-import 'package:latlong2/latlong.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import '../managers/campus_map_manager.dart';
 
 class MapVerificationScreen extends StatefulWidget {
@@ -20,9 +19,7 @@ class MapVerificationScreen extends StatefulWidget {
 }
 
 class _MapVerificationScreenState extends State<MapVerificationScreen> {
-  final MapController _mapController = MapController();
   bool _isSatellite = true;
-
 
   // Hazara University boundary bounds
   static const LatLng _swBound = LatLng(34.4155, 73.2435);
@@ -60,49 +57,10 @@ class _MapVerificationScreenState extends State<MapVerificationScreen> {
 
     final markers = locs.map((loc) {
       return Marker(
-        point: LatLng(loc.latitude, loc.longitude),
-        width: 100,
-        height: 60,
-        child: GestureDetector(
-          onTap: () {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(loc.name)),
-            );
-          },
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(6),
-                decoration: const BoxDecoration(
-                  color: Colors.blueAccent,
-                  shape: BoxShape.circle,
-                  boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 2)],
-                ),
-                child: Icon(CampusMapManager.getIconForLocation(loc.name), color: Colors.white, size: 18),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.9),
-                  borderRadius: BorderRadius.circular(4),
-                  boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 2)],
-                ),
-                child: Text(
-                  loc.name,
-                  style: const TextStyle(
-                    color: Colors.black,
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                  ),
-                  textAlign: TextAlign.center,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ],
-          ),
-        ),
+        markerId: MarkerId(loc.name),
+        position: LatLng(loc.latitude, loc.longitude),
+        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure),
+        infoWindow: InfoWindow(title: loc.name),
       );
     }).toList();
 
@@ -112,7 +70,7 @@ class _MapVerificationScreenState extends State<MapVerificationScreen> {
     });
   }
 
-  void _onMapTap(TapPosition tapPosition, LatLng point) {
+  void _onMapTap(LatLng point) {
     if (_isInsideBounds(point)) {
       setState(() {
         _selectedPoint = point;
@@ -143,38 +101,28 @@ class _MapVerificationScreenState extends State<MapVerificationScreen> {
       ),
       body: Stack(
         children: [
-          FlutterMap(
-            mapController: _mapController,
-            options: MapOptions(
-              initialCenter: _selectedPoint,
-              initialZoom: 16,
-              onTap: _onMapTap,
-              interactionOptions: const InteractionOptions(flags: InteractiveFlag.all),
-              cameraConstraint: CameraConstraint.contain(
-                bounds: LatLngBounds(_cameraSwBound, _cameraNeBound),
-              ),
-              minZoom: 14.0,
-              maxZoom: 18.0,
+          GoogleMap(
+            initialCameraPosition: CameraPosition(
+              target: _selectedPoint,
+              zoom: 16.0,
             ),
-            children: [
-              TileLayer(
-                urlTemplate: _isSatellite 
-                    ? 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
-                    : 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                userAgentPackageName: 'com.smartreporting.hu',
+            mapType: _isSatellite ? MapType.satellite : MapType.normal,
+            onTap: _onMapTap,
+            cameraTargetBounds: CameraTargetBounds(
+              LatLngBounds(
+                southwest: _cameraSwBound,
+                northeast: _cameraNeBound,
               ),
-              MarkerLayer(
-                markers: [
-                  ..._campusMarkers,
-                  Marker(
-                    point: _selectedPoint,
-                    width: 40,
-                    height: 40,
-                    child: const Icon(Icons.location_on, color: Colors.red, size: 40),
-                  ),
-                ],
+            ),
+            minMaxZoomPreference: const MinMaxZoomPreference(14.0, 18.0),
+            markers: {
+              ..._campusMarkers,
+              Marker(
+                markerId: const MarkerId('selected_point'),
+                position: _selectedPoint,
+                icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
               ),
-            ],
+            },
           ),
 
           Positioned(
