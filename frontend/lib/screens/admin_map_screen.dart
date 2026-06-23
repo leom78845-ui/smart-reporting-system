@@ -26,7 +26,8 @@ class _AdminMapScreenState extends State<AdminMapScreen> {
   bool _isLoading = true;
   bool _showSheet = false;
   String _statusFilter = 'all';
-  bool _isSatellite = false;
+  bool _isSatellite = true;
+
 
   // Hazara University boundary
   static const LatLng _swBound = LatLng(34.4155, 73.2435);

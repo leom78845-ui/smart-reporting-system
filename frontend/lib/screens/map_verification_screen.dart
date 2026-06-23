@@ -21,7 +21,8 @@ class MapVerificationScreen extends StatefulWidget {
 
 class _MapVerificationScreenState extends State<MapVerificationScreen> {
   final MapController _mapController = MapController();
-  bool _isSatellite = false;
+  bool _isSatellite = true;
+
 
   // Hazara University boundary bounds
   static const LatLng _swBound = LatLng(34.4155, 73.2435);
