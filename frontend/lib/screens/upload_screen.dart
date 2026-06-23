@@ -12,6 +12,7 @@ import '../services/api_service.dart';
 import '../services/offline_queue.dart';
 import '../managers/auth_manager.dart';
 import 'map_verification_screen.dart';
+import '../services/location_service.dart';
 
 class UploadScreen extends StatefulWidget {
   const UploadScreen({super.key});
@@ -88,9 +89,8 @@ class _UploadScreenState extends State<UploadScreen> {
     setState(() => _isLoading = true);
 
     try {
-      // Get current location from geolocator
-      final pos = await Geolocator.getCurrentPosition(
-          desiredAccuracy: LocationAccuracy.high);
+      // Get current location using LocationService to prompt for runtime permissions
+      final pos = await LocationService.getCurrentPosition();
 
       // Open Map Verification Screen to let student double check the pin location
       setState(() => _isLoading = false);
