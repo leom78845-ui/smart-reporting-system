@@ -42,6 +42,7 @@ class AuthManager extends ChangeNotifier {
     await prefs.setString("refresh_token", result["refresh"]);
     await prefs.setString("user_role", _role!);
     await prefs.setString("roll_number", result["user"]["roll_number"]);
+    await prefs.setString("user_name", result["user"]["name"] ?? "");
 
     _isLoading = false;
     notifyListeners();
@@ -58,6 +59,7 @@ class AuthManager extends ChangeNotifier {
     final roll = prefs.getString("roll_number");
     final access = prefs.getString("access_token");
     final refresh = prefs.getString("refresh_token");
+    final name = prefs.getString("user_name") ?? "";
 
     if (role == null || roll == null || access == null) {
       return false;
@@ -67,6 +69,7 @@ class AuthManager extends ChangeNotifier {
     _user = {
       "role": role,
       "roll_number": roll,
+      "name": name,
     };
 
     // Restore tokens in ApiService
@@ -76,6 +79,30 @@ class AuthManager extends ChangeNotifier {
     return true;
   }
 
+  // ---------------------------------------------------------------------------
+  // UPDATE DISPLAY NAME
+  // ---------------------------------------------------------------------------
+  Future<bool> updateName(String newName) async {
+    _isLoading = true;
+    notifyListeners();
+
+    final result = await ApiService.updateProfileName(newName);
+
+    if (result == null) {
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+
+    // Save locally
+    _user = result["user"];
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString("user_name", _user!["name"] ?? "");
+
+    _isLoading = false;
+    notifyListeners();
+    return true;
+  }
 
   // ---------------------------------------------------------------------------
   // LOGOUT
@@ -92,3 +119,4 @@ class AuthManager extends ChangeNotifier {
     notifyListeners();
   }
 }
+

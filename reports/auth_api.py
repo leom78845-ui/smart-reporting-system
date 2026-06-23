@@ -90,3 +90,33 @@ class ChangePasswordAPI(APIView):
 
         return Response({"message": "Password updated successfully"}, status=status.HTTP_200_OK)
 
+
+class UpdateProfileAPI(APIView):
+    """
+    Allows authenticated users to update their profile name.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        name = request.data.get("name")
+        if not name or not name.strip():
+            return Response(
+                {"error": "Name cannot be empty"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        user = request.user
+        user.name = name.strip()
+        user.save()
+
+        return Response({
+            "message": "Profile name updated successfully",
+            "user": {
+                "roll_number": user.roll_number,
+                "name": user.name,
+                "role": user.role,
+                "program": user.program,
+            }
+        }, status=status.HTTP_200_OK)
+
+

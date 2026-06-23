@@ -59,11 +59,18 @@ class ReportSerializer(serializers.ModelSerializer):
         read_only=True
     )
 
+    # Expose student name for admin dashboards
+    student_name = serializers.CharField(
+        source='student.name',
+        read_only=True
+    )
+
     class Meta:
         model = Report
         fields = [
             'id',
             'student_roll_number',
+            'student_name',
             'title',
             'description',
             'status',
@@ -81,6 +88,7 @@ class ReportSerializer(serializers.ModelSerializer):
             'media',
             'image_url',
         ]
+
 
 
     def create(self, validated_data):

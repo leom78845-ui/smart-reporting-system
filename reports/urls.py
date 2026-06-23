@@ -4,7 +4,8 @@ from django.urls import path
 
 from . import views
 from .api import CreateStudentAPI
-from .auth_api import RollNumberLoginAPI, me, ChangePasswordAPI
+from .auth_api import RollNumberLoginAPI, me, ChangePasswordAPI, UpdateProfileAPI
+
 from .sync_api import SyncReportsAPI
 from .dashboard_api import AdminDashboardAPI
 from .media_api import UploadMediaAPI
@@ -36,6 +37,8 @@ urlpatterns = [
     path('login/', RollNumberLoginAPI.as_view(), name='roll-login'),
     path('auth/me/', me, name='me'),
     path('auth/change-password/', ChangePasswordAPI.as_view(), name='change-password'),
+    path('auth/update-profile/', UpdateProfileAPI.as_view(), name='update-profile'),
+
 
     # ============================
     # Other APIs

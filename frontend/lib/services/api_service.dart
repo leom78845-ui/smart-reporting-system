@@ -218,6 +218,20 @@ class ApiService {
   }
 
   // ---------------------------------------------------------------------------
+  // UPDATE PROFILE NAME
+  // ---------------------------------------------------------------------------
+  static Future<Map<String, dynamic>?> updateProfileName(String newName) async {
+    final result = await authorizedPost("/auth/update-profile/", {
+      "name": newName,
+    });
+    if (result is Map<String, dynamic>) {
+      return result;
+    }
+    return null;
+  }
+
+
+  // ---------------------------------------------------------------------------
   // CREATE SINGLE STUDENT (Admin)
   // ---------------------------------------------------------------------------
   static Future<bool> createStudent({

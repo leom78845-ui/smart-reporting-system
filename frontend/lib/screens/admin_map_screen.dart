@@ -205,10 +205,15 @@ class _AdminMapScreenState extends State<AdminMapScreen> {
                   children: [
                     const Icon(Icons.person, size: 16, color: Colors.grey),
                     const SizedBox(width: 4),
-                    Text(
-                      "Submitted by: ${r['student_roll_number'] ?? 'Unknown'}",
-                      style: const TextStyle(color: Colors.grey, fontSize: 14),
+                    Expanded(
+                      child: Text(
+                        "Submitted by: ${r['student_name'] ?? 'Unknown'} (${r['student_roll_number'] ?? 'Unknown'})",
+                        style: const TextStyle(color: Colors.grey, fontSize: 14),
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
+                      ),
                     ),
+
                   ],
                 ),
                 const SizedBox(height: 12),

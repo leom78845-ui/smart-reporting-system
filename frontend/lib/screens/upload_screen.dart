@@ -273,6 +273,68 @@ class _UploadScreenState extends State<UploadScreen> {
     });
   }
 
+  void _showEditNameDialog() {
+    final auth = Provider.of<AuthManager>(context, listen: false);
+    final nameController = TextEditingController(text: auth.user?['name'] ?? "");
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.grey.shade900,
+        title: const Text("Edit Display Name", style: TextStyle(color: Colors.white)),
+        content: TextField(
+          controller: nameController,
+          style: const TextStyle(color: Colors.white),
+          decoration: const InputDecoration(
+            labelText: "Display Name",
+            labelStyle: TextStyle(color: Colors.white70),
+            enabledBorder: UnderlineInputBorder(
+              borderSide: BorderSide(color: Colors.white30),
+            ),
+            focusedBorder: UnderlineInputBorder(
+              borderSide: BorderSide(color: Colors.blueAccent),
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Cancel", style: TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final newName = nameController.text.trim();
+              if (newName.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text("Name cannot be empty")),
+                );
+                return;
+              }
+              Navigator.pop(context);
+              setState(() => _isLoading = true);
+              final success = await auth.updateName(newName);
+              setState(() => _isLoading = false);
+              
+              if (mounted) {
+                if (success) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text("Display name updated successfully!")),
+                  );
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text("Failed to update display name.")),
+                  );
+                }
+              }
+            },
+            child: const Text("Save"),
+          ),
+        ],
+      ),
+    );
+  }
+
+
   @override
   Widget build(BuildContext context) {
     final auth = Provider.of<AuthManager>(context);
@@ -363,6 +425,18 @@ class _UploadScreenState extends State<UploadScreen> {
                   Navigator.pushNamed(context, '/changePassword');
                 },
               ),
+              ListTile(
+                leading: const Icon(Icons.edit_outlined, color: Colors.blueAccent),
+                title: const Text(
+                  "Edit Display Name",
+                  style: TextStyle(color: Colors.white, fontSize: 16),
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  _showEditNameDialog();
+                },
+              ),
+
               ListTile(
                 leading: const Icon(Icons.drafts_outlined, color: Colors.cyanAccent),
                 title: const Text(
