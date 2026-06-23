@@ -9,6 +9,8 @@ import 'package:provider/provider.dart';
 import '../services/api_service.dart';
 import '../managers/auth_manager.dart';
 import '../managers/campus_map_manager.dart';
+import 'package:url_launcher/url_launcher.dart';
+
 
 class AdminMapScreen extends StatefulWidget {
   const AdminMapScreen({super.key});
@@ -277,6 +279,19 @@ class _AdminMapScreenState extends State<AdminMapScreen> {
     );
   }
 
+  Future<void> _launchVideo(String urlString) async {
+    final uri = Uri.parse(urlString);
+    try {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Error opening video: $e")),
+        );
+      }
+    }
+  }
+
   Widget _buildMediaPreview(String url) {
     final lowerUrl = url.toLowerCase();
     final isVideo = lowerUrl.endsWith('.mp4') ||
@@ -286,26 +301,30 @@ class _AdminMapScreenState extends State<AdminMapScreen> {
         lowerUrl.endsWith('.3gp');
 
     if (isVideo) {
-      return Container(
-        width: double.infinity,
-        height: 150,
-        decoration: BoxDecoration(
-          color: Colors.black,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.white24),
-        ),
-        child: const Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.play_circle_fill, color: Colors.white, size: 48),
-              SizedBox(height: 8),
-              Text("Video Attachment", style: TextStyle(color: Colors.white70)),
-            ],
+      return GestureDetector(
+        onTap: () => _launchVideo(url),
+        child: Container(
+          width: double.infinity,
+          height: 150,
+          decoration: BoxDecoration(
+            color: Colors.black,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.white24),
+          ),
+          child: const Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.play_circle_fill, color: Colors.white, size: 48),
+                SizedBox(height: 8),
+                Text("Tap to Play Video", style: TextStyle(color: Colors.white70)),
+              ],
+            ),
           ),
         ),
       );
-    } else {
+    }
+ else {
       return GestureDetector(
         onTap: () => _showFullImage(url),
         child: ClipRRect(

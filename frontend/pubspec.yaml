@@ -37,6 +37,10 @@ dependencies:
   # Connectivity
   connectivity_plus: ^7.1.1
 
+  # URL Launcher
+  url_launcher: ^6.3.0
+
+
   # UI
   cupertino_icons: ^1.0.8
 
