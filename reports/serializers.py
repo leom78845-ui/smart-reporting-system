@@ -71,6 +71,7 @@ class ReportSerializer(serializers.ModelSerializer):
             'updated_at',
             'location',
             'media',
+            'image_url',
         ]
         read_only_fields = [
             'status',
@@ -78,7 +79,9 @@ class ReportSerializer(serializers.ModelSerializer):
             'updated_at',
             'location',
             'media',
+            'image_url',
         ]
+
 
     def create(self, validated_data):
         """

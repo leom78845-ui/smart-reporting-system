@@ -163,67 +163,215 @@ class _AdminMapScreenState extends State<AdminMapScreen> {
     String currentStatus = r['status'] ?? 'pending';
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (_) => StatefulBuilder(
-        builder: (context, setBottomSheetState) => Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                r['title'] ?? 'Report',
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 8),
-              Text(r['description'] ?? 'No description'),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  const Text("Status: ", style: TextStyle(fontWeight: FontWeight.bold)),
-                  const SizedBox(width: 8),
-                  DropdownButton<String>(
-                    value: currentStatus,
-                    items: const [
-                      DropdownMenuItem(value: 'pending', child: Text('Pending')),
-                      DropdownMenuItem(value: 'reviewing', child: Text('Reviewing')),
-                      DropdownMenuItem(value: 'resolved', child: Text('Resolved')),
-                    ],
-                    onChanged: (val) async {
-                      if (val != null && val != currentStatus) {
-                        final success = await ApiService.updateReportStatus(r['id'] as int, val);
-                        if (success) {
-                          setBottomSheetState(() {
-                            currentStatus = val;
-                            r['status'] = val;
-                          });
-                          _loadReports();
-                          if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text("Status updated to $val")),
-                            );
-                          }
-                        } else {
-                          if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text("Failed to update status.")),
-                            );
+        builder: (context, setBottomSheetState) => Container(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(context).size.height * 0.85,
+          ),
+          padding: EdgeInsets.only(
+            top: 20,
+            left: 20,
+            right: 20,
+            bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+          ),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        r['title'] ?? 'Report',
+                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    const Icon(Icons.person, size: 16, color: Colors.grey),
+                    const SizedBox(width: 4),
+                    Text(
+                      "Submitted by: ${r['student_roll_number'] ?? 'Unknown'}",
+                      style: const TextStyle(color: Colors.grey, fontSize: 14),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                const Divider(),
+                const SizedBox(height: 8),
+                const Text(
+                  "Description:",
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  r['description'] ?? 'No description',
+                  style: const TextStyle(fontSize: 14),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    const Text("Status: ", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                    const SizedBox(width: 8),
+                    DropdownButton<String>(
+                      value: currentStatus,
+                      items: const [
+                        DropdownMenuItem(value: 'pending', child: Text('Pending')),
+                        DropdownMenuItem(value: 'reviewing', child: Text('Reviewing')),
+                        DropdownMenuItem(value: 'resolved', child: Text('Resolved')),
+                      ],
+                      onChanged: (val) async {
+                        if (val != null && val != currentStatus) {
+                          final success = await ApiService.updateReportStatus(r['id'] as int, val);
+                          if (success) {
+                            setBottomSheetState(() {
+                              currentStatus = val;
+                              r['status'] = val;
+                            });
+                            _loadReports();
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text("Status updated to $val")),
+                              );
+                            }
+                          } else {
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text("Failed to update status.")),
+                              );
+                            }
                           }
                         }
-                      }
-                    },
+                      },
+                    ),
+                  ],
+                ),
+                if (r['image_url'] != null && r['image_url'].toString().isNotEmpty) ...[
+                  const SizedBox(height: 16),
+                  const Text(
+                    "Attached File:",
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
                   ),
+                  const SizedBox(height: 8),
+                  _buildMediaPreview(r['image_url'].toString()),
                 ],
-              ),
-              const SizedBox(height: 16),
-            ],
+                const SizedBox(height: 20),
+              ],
+            ),
           ),
         ),
       ),
     );
   }
+
+  Widget _buildMediaPreview(String url) {
+    final lowerUrl = url.toLowerCase();
+    final isVideo = lowerUrl.endsWith('.mp4') ||
+        lowerUrl.endsWith('.mov') ||
+        lowerUrl.endsWith('.avi') ||
+        lowerUrl.endsWith('.mkv') ||
+        lowerUrl.endsWith('.3gp');
+
+    if (isVideo) {
+      return Container(
+        width: double.infinity,
+        height: 150,
+        decoration: BoxDecoration(
+          color: Colors.black,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.white24),
+        ),
+        child: const Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.play_circle_fill, color: Colors.white, size: 48),
+              SizedBox(height: 8),
+              Text("Video Attachment", style: TextStyle(color: Colors.white70)),
+            ],
+          ),
+        ),
+      );
+    } else {
+      return GestureDetector(
+        onTap: () => _showFullImage(url),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: Image.network(
+            url,
+            height: 180,
+            width: double.infinity,
+            fit: BoxFit.cover,
+            errorBuilder: (context, error, stackTrace) => Container(
+              height: 100,
+              color: Colors.grey.shade800,
+              child: const Center(
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.broken_image, color: Colors.white54),
+                    SizedBox(width: 8),
+                    Text("Error loading image", style: TextStyle(color: Colors.white54)),
+                  ],
+                ),
+              ),
+            ),
+            loadingBuilder: (context, child, progress) {
+              if (progress == null) return child;
+              return Container(
+                height: 180,
+                color: Colors.grey.shade900,
+                child: const Center(child: CircularProgressIndicator()),
+              );
+            },
+          ),
+        ),
+      );
+    }
+  }
+
+  void _showFullImage(String url) {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog.fullscreen(
+        backgroundColor: Colors.black,
+        child: Stack(
+          children: [
+            Center(
+              child: InteractiveViewer(
+                child: Image.network(url),
+              ),
+            ),
+            Positioned(
+              top: 40,
+              left: 20,
+              child: CircleAvatar(
+                backgroundColor: Colors.black54,
+                child: IconButton(
+                  icon: const Icon(Icons.close, color: Colors.white),
+                  onPressed: () => Navigator.pop(context),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
 
   @override
   Widget build(BuildContext context) {
