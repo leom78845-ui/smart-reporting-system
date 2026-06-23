@@ -281,12 +281,12 @@ class _UploadScreenState extends State<UploadScreen> {
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: Colors.grey.shade900,
-        title: const Text("Edit Display Name", style: TextStyle(color: Colors.white)),
+        title: const Text("Edit Name", style: TextStyle(color: Colors.white)),
         content: TextField(
           controller: nameController,
           style: const TextStyle(color: Colors.white),
           decoration: const InputDecoration(
-            labelText: "Display Name",
+            labelText: "Name",
             labelStyle: TextStyle(color: Colors.white70),
             enabledBorder: UnderlineInputBorder(
               borderSide: BorderSide(color: Colors.white30),
@@ -453,7 +453,7 @@ class _UploadScreenState extends State<UploadScreen> {
               ListTile(
                 leading: const Icon(Icons.edit_outlined, color: Colors.blueAccent),
                 title: const Text(
-                  "Edit Display Name",
+                  "Edit Name",
                   style: TextStyle(color: Colors.white, fontSize: 16),
                 ),
                 onTap: () {
