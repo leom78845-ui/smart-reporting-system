@@ -642,14 +642,18 @@ class _UploadScreenState extends State<UploadScreen> {
                                               shape: RoundedRectangleBorder(
                                                 borderRadius: BorderRadius.circular(12),
                                               ),
+                                              padding: const EdgeInsets.symmetric(horizontal: 8),
                                             ),
-                                            icon: const Icon(Icons.drafts, color: Colors.cyanAccent, size: 18),
-                                            label: const Text(
-                                              "Add to Draft",
-                                              style: TextStyle(
-                                                color: Colors.white,
-                                                fontSize: 14,
-                                                fontWeight: FontWeight.bold,
+                                            icon: const Icon(Icons.drafts, color: Colors.cyanAccent, size: 16),
+                                            label: const FittedBox(
+                                              fit: BoxFit.scaleDown,
+                                              child: Text(
+                                                "Add to Draft",
+                                                style: TextStyle(
+                                                  color: Colors.white,
+                                                  fontSize: 14,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
                                               ),
                                             ),
                                           ),
@@ -657,7 +661,6 @@ class _UploadScreenState extends State<UploadScreen> {
                                       ),
                                       const SizedBox(width: 12),
                                       Expanded(
-                                        flex: 2,
                                         child: Container(
                                           height: 50,
                                           decoration: BoxDecoration(
@@ -674,13 +677,17 @@ class _UploadScreenState extends State<UploadScreen> {
                                               shape: RoundedRectangleBorder(
                                                 borderRadius: BorderRadius.circular(12),
                                               ),
+                                              padding: const EdgeInsets.symmetric(horizontal: 8),
                                             ),
-                                            child: const Text(
-                                              "Verify & Submit",
-                                              style: TextStyle(
-                                                color: Colors.white,
-                                                fontSize: 14,
-                                                fontWeight: FontWeight.bold,
+                                            child: const FittedBox(
+                                              fit: BoxFit.scaleDown,
+                                              child: Text(
+                                                "Verify & Submit",
+                                                style: TextStyle(
+                                                  color: Colors.white,
+                                                  fontSize: 14,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
                                               ),
                                             ),
                                           ),

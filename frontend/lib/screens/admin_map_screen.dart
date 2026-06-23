@@ -111,16 +111,19 @@ class _AdminMapScreenState extends State<AdminMapScreen> {
       final data = await ApiService.getAllReports();
       if (mounted) {
         final filtered = data.where((r) {
-          if (r['latitude'] == null || r['longitude'] == null) return false;
-          final lat = double.tryParse(r['latitude'].toString());
-          final lng = double.tryParse(r['longitude'].toString());
+          if (r['location'] == null) return false;
+          final loc = r['location'];
+          if (loc['latitude'] == null || loc['longitude'] == null) return false;
+          final lat = double.tryParse(loc['latitude'].toString());
+          final lng = double.tryParse(loc['longitude'].toString());
           return lat != null && lng != null;
         }).toList();
 
         // Build report markers
         final markers = filtered.map((r) {
-          final lat = double.parse(r['latitude'].toString());
-          final lng = double.parse(r['longitude'].toString());
+          final loc = r['location']!;
+          final lat = double.parse(loc['latitude'].toString());
+          final lng = double.parse(loc['longitude'].toString());
           return Marker(
             point: LatLng(lat, lng),
             width: 40,
@@ -475,12 +478,13 @@ class _AdminMapScreenState extends State<AdminMapScreen> {
                           ),
                           trailing: const Icon(Icons.chevron_right, color: Colors.white54),
                           onTap: () {
-                            final lat = double.tryParse(report['latitude'].toString()) ?? 0.0;
-                            final lng = double.tryParse(report['longitude'].toString()) ?? 0.0;
-                            _mapController.move(LatLng(lat, lng), 17.0);
-                            setState(() => _showSheet = false);
-                            _showReportBottomSheet(report);
-                          },
+                             final loc = report['location'];
+                             final lat = loc != null ? (double.tryParse(loc['latitude'].toString()) ?? 0.0) : 0.0;
+                             final lng = loc != null ? (double.tryParse(loc['longitude'].toString()) ?? 0.0) : 0.0;
+                             _mapController.move(LatLng(lat, lng), 17.0);
+                             setState(() => _showSheet = false);
+                             _showReportBottomSheet(report);
+                           },
                         );
                       },
                     ),
