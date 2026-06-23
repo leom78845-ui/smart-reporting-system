@@ -348,6 +348,29 @@ class _UploadScreenState extends State<UploadScreen> {
         backgroundColor: Colors.blue.shade900,
         iconTheme: const IconThemeData(color: Colors.white),
         elevation: 2,
+        actions: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            child: Center(
+              child: Text(
+                auth.user?['name'] != null && auth.user!['name'].toString().trim().isNotEmpty
+                    ? auth.user!['name'].toString()
+                    : "Student User",
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+                ),
+              ),
+            ),
+          ),
+          Builder(
+            builder: (context) => IconButton(
+              icon: const Icon(Icons.menu),
+              onPressed: () => Scaffold.of(context).openEndDrawer(),
+            ),
+          ),
+        ],
       ),
       endDrawer: Drawer(
         child: Container(
@@ -377,7 +400,9 @@ class _UploadScreenState extends State<UploadScreen> {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Text(
-                            auth.user?['name'] ?? "Student Dashboard",
+                            auth.user?['name'] != null && auth.user!['name'].toString().trim().isNotEmpty
+                                ? auth.user!['name'].toString()
+                                : "Student User",
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
