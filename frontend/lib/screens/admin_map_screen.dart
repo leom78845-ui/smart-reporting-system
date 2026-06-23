@@ -460,7 +460,7 @@ class _AdminMapScreenState extends State<AdminMapScreen> {
               target: CampusMapManager.universityCenter,
               zoom: CampusMapManager.defaultZoom,
             ),
-            mapType: _isSatellite ? MapType.satellite : MapType.normal,
+            mapType: _isSatellite ? MapType.hybrid : MapType.normal,
             onMapCreated: (controller) => _mapController = controller,
             minMaxZoomPreference: const MinMaxZoomPreference(2.0, 18.0),
             markers: {

@@ -106,7 +106,7 @@ class _MapVerificationScreenState extends State<MapVerificationScreen> {
               target: _selectedPoint,
               zoom: 16.0,
             ),
-            mapType: _isSatellite ? MapType.satellite : MapType.normal,
+            mapType: _isSatellite ? MapType.hybrid : MapType.normal,
             onTap: _onMapTap,
             cameraTargetBounds: CameraTargetBounds(
               LatLngBounds(
