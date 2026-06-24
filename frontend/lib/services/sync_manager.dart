@@ -29,8 +29,11 @@ class SyncManager {
   // ATTEMPT SYNC
   // ---------------------------------------------------------------------------
   static Future<void> _attemptSync() async {
-    final connectivity = await Connectivity().checkConnectivity();
-    if (connectivity == ConnectivityResult.none) {
+    final conn = await Connectivity().checkConnectivity();
+    final isOffline = (conn is List)
+        ? (conn.contains(ConnectivityResult.none) || conn.isEmpty)
+        : (conn == ConnectivityResult.none);
+    if (isOffline) {
       return; // no internet
     }
 

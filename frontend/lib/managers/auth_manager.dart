@@ -103,6 +103,9 @@ class AuthManager extends ChangeNotifier {
     // Save locally
     if (result["user"] != null) {
       _user = Map<String, dynamic>.from(result["user"]);
+    } else {
+      _user ??= {};
+      _user!["name"] = newName;
     }
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString("user_name", _user?["name"] ?? "");

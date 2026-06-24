@@ -119,8 +119,11 @@ class _UploadScreenState extends State<UploadScreen> {
     }
 
     // Check connectivity
-    final connectivity = await Connectivity().checkConnectivity();
-    if (connectivity == ConnectivityResult.none) {
+    final conn = await Connectivity().checkConnectivity();
+    final isOffline = (conn is List)
+        ? (conn.contains(ConnectivityResult.none) || conn.isEmpty)
+        : (conn == ConnectivityResult.none);
+    if (isOffline) {
       setState(() => _isLoading = true);
       try {
         final pos = await LocationService.getCurrentPosition();

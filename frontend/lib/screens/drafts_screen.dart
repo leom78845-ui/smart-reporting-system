@@ -71,8 +71,11 @@ class _DraftsScreenState extends State<DraftsScreen> {
 
   Future<void> _submitDraft(Map<String, dynamic> draft) async {
     // Check connectivity
-    final connectivity = await Connectivity().checkConnectivity();
-    if (connectivity == ConnectivityResult.none) {
+    final conn = await Connectivity().checkConnectivity();
+    final isOffline = (conn is List)
+        ? (conn.contains(ConnectivityResult.none) || conn.isEmpty)
+        : (conn == ConnectivityResult.none);
+    if (isOffline) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("No internet connection detected. Please try again later.")),
       );
