@@ -109,6 +109,7 @@ class _DraftsScreenState extends State<DraftsScreen> {
         longitude: (draft['longitude'] as num).toDouble(),
         mediaUrl: mediaUrl,
         mediaType: draft['media_type'] ?? "image",
+        mediaCapturedAt: draft['media_captured_at'] as String?,
       );
 
       if (success) {

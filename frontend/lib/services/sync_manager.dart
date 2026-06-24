@@ -59,6 +59,7 @@ class SyncManager {
           longitude: (draft['longitude'] as num).toDouble(),
           mediaUrl: mediaUrl,
           mediaType: mediaType,
+          mediaCapturedAt: draft['media_captured_at'] as String?,
         );
 
         if (success) {

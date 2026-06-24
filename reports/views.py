@@ -38,6 +38,7 @@ def submit_report(request):
     title = request.data.get('title')
     description = request.data.get('description')
     image_url = request.data.get('media_url')
+    media_captured_at = request.data.get('media_captured_at')
     latitude = request.data.get('latitude')
     longitude = request.data.get('longitude')
     address = request.data.get('address', '')
@@ -52,6 +53,7 @@ def submit_report(request):
                 title=title,
                 description=description,
                 image_url=image_url,
+                media_captured_at=media_captured_at,
             )
             if latitude is not None and longitude is not None:
                 Location.objects.create(
@@ -183,3 +185,21 @@ class SyncReportsView(APIView):
                 errors.append(serializer.errors)
 
         return Response({"saved": saved_reports, "errors": errors, "count": len(saved_reports)}, status=status.HTTP_201_CREATED)
+
+
+# ============================
+# Admin: Delete Report
+# ============================
+
+@api_view(['DELETE'])
+@permission_classes([permissions.IsAuthenticated, IsAdminRole])
+def delete_report(request, report_id):
+    """
+    Admin can delete any report.
+    """
+    try:
+        report = Report.objects.get(id=report_id)
+        report.delete()
+        return Response({"message": "Report deleted successfully"}, status=status.HTTP_200_OK)
+    except Report.DoesNotExist:
+        return Response({"error": "Report not found"}, status=status.HTTP_404_NOT_FOUND)

@@ -25,6 +25,7 @@ urlpatterns = [
     path('bulk-create/', views.bulk_create_users, name='bulk-create'),
     path('all-reports/', views.all_reports, name='all-reports'),
     path('reports/<int:id>/status/', views.update_report_status, name='update-status'),
+    path('reports/<int:report_id>/delete/', views.delete_report, name='delete-report'),
 
     # ============================
     # Student Creation API

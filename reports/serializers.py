@@ -79,6 +79,7 @@ class ReportSerializer(serializers.ModelSerializer):
             'location',
             'media',
             'image_url',
+            'media_captured_at',
         ]
         read_only_fields = [
             'status',

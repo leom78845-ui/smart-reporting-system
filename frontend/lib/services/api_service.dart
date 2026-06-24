@@ -125,6 +125,7 @@ class ApiService {
     required double longitude,
     required String mediaUrl,
     required String mediaType,
+    String? mediaCapturedAt,
   }) async {
     final body = {
       "title": title,
@@ -133,6 +134,7 @@ class ApiService {
       "longitude": longitude,
       "media_url": mediaUrl,
       "media_type": mediaType,
+      if (mediaCapturedAt != null) "media_captured_at": mediaCapturedAt,
     };
 
     final result = await authorizedPost("/reports/submit/", body);
@@ -266,6 +268,32 @@ class ApiService {
       "program": program,
       "password": password,
     });
+    return result != null;
+  }
+
+  // ---------------------------------------------------------------------------
+  // GENERIC AUTHORIZED DELETE
+  // ---------------------------------------------------------------------------
+  static Future<dynamic> authorizedDelete(String endpoint) async {
+    if (_accessToken == null) return null;
+
+    final url = Uri.parse("${AppConstants.baseUrl}$endpoint");
+    final response = await http.delete(
+      url,
+      headers: {HttpHeaders.authorizationHeader: "Bearer $_accessToken"},
+    );
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    }
+    return null;
+  }
+
+  // ---------------------------------------------------------------------------
+  // DELETE REPORT (Admin)
+  // ---------------------------------------------------------------------------
+  static Future<bool> deleteReport(int reportId) async {
+    final result = await authorizedDelete("/reports/$reportId/delete/");
     return result != null;
   }
 }

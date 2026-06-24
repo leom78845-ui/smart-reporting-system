@@ -156,9 +156,36 @@ class _AdminMapScreenState extends State<AdminMapScreen> {
                         maxLines: 1,
                       ),
                     ),
-
                   ],
                 ),
+                const SizedBox(height: 6),
+                Row(
+                  children: [
+                    const Icon(Icons.calendar_today, size: 16, color: Colors.grey),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: Text(
+                        "Submitted At: ${_formatTimestamp(r['submitted_at'])}",
+                        style: const TextStyle(color: Colors.grey, fontSize: 14),
+                      ),
+                    ),
+                  ],
+                ),
+                if (r['media_captured_at'] != null && r['media_captured_at'].toString().isNotEmpty) ...[
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      const Icon(Icons.camera_alt, size: 16, color: Colors.grey),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          "Media Recorded: ${_formatTimestamp(r['media_captured_at'])}",
+                          style: const TextStyle(color: Colors.grey, fontSize: 14),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
                 const SizedBox(height: 12),
                 const Divider(),
                 const SizedBox(height: 8),
@@ -218,6 +245,67 @@ class _AdminMapScreenState extends State<AdminMapScreen> {
                   const SizedBox(height: 8),
                   _buildMediaPreview(r['image_url'].toString()),
                 ],
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: () async {
+                      final confirm = await showDialog<bool>(
+                        context: context,
+                        builder: (context) => AlertDialog(
+                          backgroundColor: Colors.grey.shade900,
+                          title: const Text("Delete Report", style: TextStyle(color: Colors.white)),
+                          content: const Text(
+                            "Are you sure you want to delete this report permanently?",
+                            style: TextStyle(color: Colors.white70),
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(context, false),
+                              child: const Text("Cancel", style: TextStyle(color: Colors.grey)),
+                            ),
+                            TextButton(
+                              onPressed: () => Navigator.pop(context, true),
+                              child: const Text("Delete", style: TextStyle(color: Colors.redAccent)),
+                            ),
+                          ],
+                        ),
+                      );
+
+                      if (confirm == true) {
+                        final success = await ApiService.deleteReport(r['id'] as int);
+                        if (success) {
+                          if (context.mounted) {
+                            Navigator.pop(context); // Close bottom sheet
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text("Report deleted successfully")),
+                            );
+                            _loadReports();
+                          }
+                        } else {
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text("Failed to delete report")),
+                            );
+                          }
+                        }
+                      }
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red.shade900,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                    icon: const Icon(Icons.delete_outline),
+                    label: const Text(
+                      "Delete Report",
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                    ),
+                  ),
+                ),
                 const SizedBox(height: 20),
               ],
             ),
@@ -636,6 +724,21 @@ class _AdminMapScreenState extends State<AdminMapScreen> {
         return Colors.greenAccent;
       default:
         return Colors.grey;
+    }
+  }
+
+  String _formatTimestamp(dynamic timestampStr) {
+    if (timestampStr == null) return "N/A";
+    try {
+      final dt = DateTime.parse(timestampStr.toString()).toLocal();
+      final year = dt.year;
+      final month = dt.month.toString().padLeft(2, '0');
+      final day = dt.day.toString().padLeft(2, '0');
+      final hour = dt.hour.toString().padLeft(2, '0');
+      final minute = dt.minute.toString().padLeft(2, '0');
+      return "$year-$month-$day $hour:$minute";
+    } catch (_) {
+      return timestampStr.toString();
     }
   }
 }

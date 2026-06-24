@@ -24,7 +24,7 @@ class OfflineQueue {
 
     _db = await openDatabase(
       path,
-      version: 1,
+      version: 2,
       onCreate: (db, version) async {
         await db.execute('''
           CREATE TABLE reports (
@@ -34,9 +34,15 @@ class OfflineQueue {
             latitude REAL,
             longitude REAL,
             file_path TEXT,
-            media_type TEXT
+            media_type TEXT,
+            media_captured_at TEXT
           )
         ''');
+      },
+      onUpgrade: (db, oldVersion, newVersion) async {
+        if (oldVersion < 2) {
+          await db.execute('ALTER TABLE reports ADD COLUMN media_captured_at TEXT');
+        }
       },
     );
   }

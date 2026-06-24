@@ -28,6 +28,7 @@ class _UploadScreenState extends State<UploadScreen> {
 
   File? _selectedFile;
   String? _mediaType;
+  DateTime? _mediaCapturedAt;
   bool _isLoading = false;
 
   int _pendingCount = 0;
@@ -72,6 +73,7 @@ class _UploadScreenState extends State<UploadScreen> {
       setState(() {
         _selectedFile = File(picked!.path);
         _mediaType = type;
+        _mediaCapturedAt = DateTime.now();
       });
     }
   }
@@ -134,6 +136,7 @@ class _UploadScreenState extends State<UploadScreen> {
           "longitude": pos.longitude,
           "file_path": _selectedFile!.path,
           "media_type": _mediaType ?? "image",
+          "media_captured_at": _mediaCapturedAt?.toIso8601String(),
         });
 
         if (mounted) {
@@ -197,6 +200,7 @@ class _UploadScreenState extends State<UploadScreen> {
           longitude: verifiedLoc.longitude,
           mediaUrl: mediaUrl,
           mediaType: _mediaType ?? "image",
+          mediaCapturedAt: _mediaCapturedAt?.toIso8601String(),
         );
       }
 
@@ -215,6 +219,7 @@ class _UploadScreenState extends State<UploadScreen> {
           "longitude": verifiedLoc.longitude,
           "file_path": _selectedFile!.path,
           "media_type": _mediaType ?? "image",
+          "media_captured_at": _mediaCapturedAt?.toIso8601String(),
         });
 
         ScaffoldMessenger.of(context).showSnackBar(
@@ -286,6 +291,7 @@ class _UploadScreenState extends State<UploadScreen> {
         "longitude": pos.longitude,
         "file_path": _selectedFile!.path,
         "media_type": _mediaType ?? "image",
+        "media_captured_at": _mediaCapturedAt?.toIso8601String(),
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -308,6 +314,7 @@ class _UploadScreenState extends State<UploadScreen> {
     setState(() {
       _selectedFile = null;
       _mediaType = null;
+      _mediaCapturedAt = null;
     });
   }
 
