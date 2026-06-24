@@ -115,6 +115,7 @@ class _MapVerificationScreenState extends State<MapVerificationScreen> {
               ),
             ),
             minMaxZoomPreference: const MinMaxZoomPreference(14.0, 18.0),
+            mapToolbarEnabled: false,
             markers: {
               ..._campusMarkers,
               Marker(

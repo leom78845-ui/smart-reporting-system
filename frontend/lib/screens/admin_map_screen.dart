@@ -37,7 +37,6 @@ class _AdminMapScreenState extends State<AdminMapScreen> {
   void initState() {
     super.initState();
     _loadReports();
-    _loadCampusLocationMarkers();
   }
 
   Future<void> _loadCampusLocationMarkers() async {
@@ -463,10 +462,8 @@ class _AdminMapScreenState extends State<AdminMapScreen> {
             mapType: _isSatellite ? MapType.hybrid : MapType.normal,
             onMapCreated: (controller) => _mapController = controller,
             minMaxZoomPreference: const MinMaxZoomPreference(2.0, 18.0),
-            markers: {
-              ..._campusMarkers,
-              ..._reportMarkers,
-            },
+            mapToolbarEnabled: false,
+            markers: _reportMarkers,
           ),
 
           _buildControls(),

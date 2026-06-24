@@ -33,16 +33,22 @@ class AuthManager extends ChangeNotifier {
     }
 
     // Save user info
-    _user = result["user"];
-    _role = result["user"]["role"];
+    if (result["user"] != null) {
+      _user = Map<String, dynamic>.from(result["user"]);
+    } else {
+      _user = null;
+    }
+    _role = _user?["role"];
 
     // Save tokens + user info locally
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString("access_token", result["access"]);
     await prefs.setString("refresh_token", result["refresh"]);
-    await prefs.setString("user_role", _role!);
-    await prefs.setString("roll_number", result["user"]["roll_number"]);
-    await prefs.setString("user_name", result["user"]["name"] ?? "");
+    if (_role != null) {
+      await prefs.setString("user_role", _role!);
+    }
+    await prefs.setString("roll_number", _user?["roll_number"] ?? "");
+    await prefs.setString("user_name", _user?["name"] ?? "");
 
     _isLoading = false;
     notifyListeners();
@@ -95,9 +101,11 @@ class AuthManager extends ChangeNotifier {
     }
 
     // Save locally
-    _user = result["user"];
+    if (result["user"] != null) {
+      _user = Map<String, dynamic>.from(result["user"]);
+    }
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString("user_name", _user!["name"] ?? "");
+    await prefs.setString("user_name", _user?["name"] ?? "");
 
     _isLoading = false;
     notifyListeners();

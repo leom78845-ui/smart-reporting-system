@@ -7,6 +7,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:provider/provider.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 
 import '../services/api_service.dart';
 import '../services/offline_queue.dart';
@@ -114,6 +115,40 @@ class _UploadScreenState extends State<UploadScreen> {
           ],
         ),
       );
+      return;
+    }
+
+    // Check connectivity
+    final connectivity = await Connectivity().checkConnectivity();
+    if (connectivity == ConnectivityResult.none) {
+      setState(() => _isLoading = true);
+      try {
+        final pos = await LocationService.getCurrentPosition();
+        await OfflineQueue.queueReport({
+          "title": title,
+          "description": description,
+          "latitude": pos.latitude,
+          "longitude": pos.longitude,
+          "file_path": _selectedFile!.path,
+          "media_type": _mediaType ?? "image",
+        });
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("saved to drafts")),
+          );
+        }
+        _clearForm();
+        _loadStats();
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text("Error saving draft: $e")),
+          );
+        }
+      } finally {
+        setState(() => _isLoading = false);
+      }
       return;
     }
 
@@ -318,11 +353,11 @@ class _UploadScreenState extends State<UploadScreen> {
               if (mounted) {
                 if (success) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text("Display name updated successfully!")),
+                    const SnackBar(content: Text("Name updated successfully!")),
                   );
                 } else {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text("Failed to update display name.")),
+                    const SnackBar(content: Text("Failed to update name.")),
                   );
                 }
               }
